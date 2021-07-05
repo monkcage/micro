@@ -1,10 +1,11 @@
 
+#include <thread>
 #include "ServiceCounter.hpp"
 
 
 int main()
 {
-    ServiceCounter serv;
+    easy::ServiceCounter serv;
     std::thread thr([&](){
         serv.Start();
     });
