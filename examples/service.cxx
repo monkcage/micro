@@ -58,12 +58,20 @@ private:
 };
 
 
+#include "IService.hpp"
+
+
 
 int main(int argc, char const* argv[])
 {
-    ServiceProvider serv;
+    // ServiceProvider serv;
+    // std::thread thr([&](){
+    //     serv.Start(argv[1]);
+    // });
+    // thr.join();
+    easy::IService serv(argv[1]);
     std::thread thr([&](){
-        serv.Start(argv[1]);
+        serv.Start();
     });
     thr.join();
     return 0;

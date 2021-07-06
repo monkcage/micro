@@ -1,6 +1,6 @@
 
 #include <iostream>
-#include "Service.hpp"
+#include "IService.hpp"
 
 
 struct test_t{
@@ -19,7 +19,7 @@ int main(int argc, char const* argv[])
 
     test_t* t = reinterpret_cast<test_t*>(&ts->a);
     std::cout << "ts point a: " << ts->a << std::endl;
-    std::cout << "ts point in: " << (void*)*ts << std::endl;
+    //std::cout << "ts point in: " << (void*)*ts << std::endl;
     return 0;
 }
 

@@ -2,9 +2,10 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <thread>
 
 #include "nlohmann/json.hpp"
-#include "Service.hpp"
+#include "IService.hpp"
 
 
 namespace easy {
@@ -56,6 +57,11 @@ IService::IService(char const* confile)
 }
 
 
+IService::~IService()
+{
+}
+
+
 void IService::Start()
 {
     for(uint32_t idx = 0; idx < JCONF.gateways.size(); ++idx) {
@@ -64,7 +70,6 @@ void IService::Start()
         sock->id = idx;
         zmq_connect(sock->zsock, JCONF.gateways[idx].c_str());
         proxyDealers_.emplace_back(sock);
-        rawProxyDealers_.emplace_back(sock->zsock);
     }
     proxyJoint_ = zmq_socket(ctx_, ZMQ_DEALER);
     proxyRouter_ = zmq_socket(ctx_, ZMQ_ROUTER);
@@ -72,6 +77,16 @@ void IService::Start()
     zmq_bind(proxyRouter_, "inproc://easy.proxy.router");
     zmq_bind(proxyDealer_, JCONF.backend.c_str());
     zmq_connect(proxyJoint_, "inproc://easy.proxy.router");
+
+    std::thread frontendThread([&](){
+        startFrontendThread();
+    });
+    std::thread backendThread([&](){
+        startBackendThread();
+    });
+
+    frontendThread.join();
+    backendThread.join();
 }
 
 
@@ -95,26 +110,35 @@ void IService::startFrontendThread()
     zmq_pollitem_t* items = new zmq_pollitem_t[proxyDealers_.size() + 1];
     uint32_t i;
     for(i=0; i<proxyDealers_.size(); ++i) {
-        items[i] = {(detail::sock_t*)(proxyDealers_[i])->zsock, 0, ZMQ_POLLIN, 0};
+        items[i] = {((detail::sock_t*)(proxyDealers_[i]))->zsock, 0, ZMQ_POLLIN, 0};
     }
     items[i] = {proxyJoint_, 0, ZMQ_POLLIN, 0};
     while(!stoped_) {
-        zmq_poll(items, proxyDealers_.size, -1);
+        zmq_poll(items, proxyDealers_.size(), -1);
         int more = 0;
         size_t more_size = sizeof(more);
         for(i=0; i<proxyDealers_.size(); ++i) {
             if(items[i].revents & ZMQ_POLLIN) {
                 // TODO: send to router by proxyJoint;
                 // 第一帧加上sock_t id
-                zmq_msg_t identity; zmq_msg_init_size(sizeof(uint32_t));
-                *(uint32_t*)zmq_msg_data(&identity) = (detail::sock_t*)(&(items[i].socket))->id;
+                zmq_msg_t identity; zmq_msg_init_size(&identity, sizeof(uint32_t));
+                *(uint32_t*)zmq_msg_data(&identity) = ((detail::sock_t*)(&(items[i].socket)))->id;
                 
-                zmq_msg_send(&identity, proxyJoint_, ZMQ_SNDMORE);
-                zmq_getsockopt(items[i].socket, )
+                // zmq_msg_send(&identity, proxyJoint_, ZMQ_SNDMORE);
+                zmq_getsockopt(items[i].socket, ZMQ_RCVMORE, &more, &more_size);
+                while(more != 0) {
+                    zmq_msg_t content;
+                    zmq_msg_init(&content);
+                    zmq_msg_recv(&content, items[i].socket, 0);
+                    // zmq_msg_send(&content, proxyJoint_, 0);
+                    zmq_msg_close(&content);
+                    zmq_getsockopt(items[i].socket, ZMQ_RCVMORE, &more, &more_size);
+                }
             }
         }
         if(items[i].revents & ZMQ_POLLIN) {
             // TODO: recv data from proxyJoint, and send by sock id;
+            // 
         }
     } 
 }

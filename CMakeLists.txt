@@ -20,10 +20,11 @@ ADD_EXECUTABLE(broker ./examples/broker.cxx
 TARGET_LINK_LIBRARIES(broker zmq)
 
 
-ADD_EXECUTABLE(server ./examples/service.cxx)
+ADD_EXECUTABLE(server ./examples/service.cxx
+                      ./src/IService.cxx)
 TARGET_LINK_LIBRARIES(server zmq)
 
 
 ADD_EXECUTABLE(test ./examples/test.cxx 
-                    ./src/Service.cxx)
+                    ./src/IService.cxx)
 TARGET_LINK_LIBRARIES(test zmq)
