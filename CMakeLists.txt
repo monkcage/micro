@@ -4,7 +4,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.8.0)
 
 PROJECT(micro)
 
-INCLUDE_DIRECTORIES(./th3party/inc ./src/core)
+INCLUDE_DIRECTORIES(./th3party/inc ./src/core ./src)
 
 LINK_DIRECTORIES(./th3party/lib)
 
@@ -22,3 +22,8 @@ TARGET_LINK_LIBRARIES(broker zmq)
 
 ADD_EXECUTABLE(server ./examples/service.cxx)
 TARGET_LINK_LIBRARIES(server zmq)
+
+
+ADD_EXECUTABLE(test ./examples/test.cxx 
+                    ./src/Service.cxx)
+TARGET_LINK_LIBRARIES(test zmq)
