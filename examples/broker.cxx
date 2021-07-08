@@ -1,6 +1,9 @@
 
 #include <thread>
 #include "ServiceCounter.hpp"
+#include "log/easylogging++.h"
+
+INITIALIZE_EASYLOGGINGPP
 
 
 int main()

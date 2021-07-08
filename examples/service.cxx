@@ -3,6 +3,9 @@
 #include <iostream>
 #include <thread>
 #include <string.h>
+#include "log/easylogging++.h"
+
+INITIALIZE_EASYLOGGINGPP
 
 
 #include "zmq/zmq.h"

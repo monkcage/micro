@@ -4,6 +4,7 @@
 #include <fstream>
 #include <thread>
 
+#include "log/easylogging++.h"
 #include "nlohmann/json.hpp"
 #include "IService.hpp"
 
@@ -13,8 +14,19 @@ namespace easy {
 
 using json = nlohmann::json;
 
+static char const* URI_FRONTEND_MONITOR = "inproc://easy.frontend.monitor";
+static char const* URI_PROXY_ROUTER     = "inproc://easy.proxy.router";
+static char const* URI_PROXY_JOINT      = "inproc://easy.proxy.joint";
+
 
 namespace detail{
+
+enum conn_status {
+    NotConnected = 0x00,
+    Connecting,
+    Connected,
+    Disconnected
+};
 
 struct service_conf_t {
     std::string              service;
@@ -31,9 +43,10 @@ void from_json(json const& j, service_conf_t& conf)
 
 
 struct sock_t {
-    void*    zsock;
-    uint32_t id;
-    bool     active;
+    void*       zsock;
+    uint32_t    id;
+    bool        active;
+    conn_status status;
 };
 
 
@@ -59,6 +72,10 @@ IService::IService(char const* confile)
 
 IService::~IService()
 {
+    for(auto&& thr: threads_) {
+        if(thr.joinable()) 
+            thr.join();
+    }
 }
 
 
@@ -68,25 +85,21 @@ void IService::Start()
         detail::sock_t* sock = new detail::sock_t;
         sock->zsock = zmq_socket(ctx_, ZMQ_DEALER);
         sock->id = idx;
+        sock->status = NotConnected;
+        // 先开启监控线程,再进行连接
+        threads_.emplace_back(std::thread(std::bind(&IService::startMonitorThread, this, idx)));
         zmq_connect(sock->zsock, JCONF.gateways[idx].c_str());
         proxyDealers_.emplace_back(sock);
     }
     proxyJoint_ = zmq_socket(ctx_, ZMQ_DEALER);
     proxyRouter_ = zmq_socket(ctx_, ZMQ_ROUTER);
     proxyDealer_ = zmq_socket(ctx_, ZMQ_DEALER);
-    zmq_bind(proxyRouter_, "inproc://easy.proxy.router");
+    zmq_bind(proxyRouter_, URI_PROXY_ROUTER);
     zmq_bind(proxyDealer_, JCONF.backend.c_str());
-    zmq_connect(proxyJoint_, "inproc://easy.proxy.router");
+    zmq_connect(proxyJoint_, URI_PROXY_JOINT);
 
-    std::thread frontendThread([&](){
-        startFrontendThread();
-    });
-    std::thread backendThread([&](){
-        startBackendThread();
-    });
-
-    frontendThread.join();
-    backendThread.join();
+    threads_.emplace_back(std::thread(std::bind(&IService::startFrontendThread, this)));
+    threads_.emplace_back(std::thread(std::bind(&IService::startBackendThread, this)));
 }
 
 
@@ -103,7 +116,8 @@ void IService::startFrontendThread()
     for(auto&& item: proxyDealers_) {
         zmq_msg_t identity;  zmq_msg_init_size(&identity, JCONF.service.size() + 1);
         memcpy(zmq_msg_data(&identity), JCONF.service.c_str(), JCONF.service.size() + 1);
-        zmq_msg_send(&identity, ((detail::sock_t*)item)->zsock, 0);
+        int rc = zmq_msg_send(&identity, ((detail::sock_t*)item)->zsock, 0);
+        LOG(DEBUG) << "Send service name to Gateway ret: " << rc;
     }
 
     // second: poll in/out
@@ -143,6 +157,10 @@ void IService::startFrontendThread()
     } 
 }
 
+void IService::startMonitorThread(uint32_t idx)
+{
+
+}
 
 void IService::Stop()
 {

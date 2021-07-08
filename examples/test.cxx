@@ -1,6 +1,9 @@
 
 #include <iostream>
 #include "IService.hpp"
+#include "log/easylogging++.h"
+
+INITIALIZE_EASYLOGGINGPP
 
 
 struct test_t{

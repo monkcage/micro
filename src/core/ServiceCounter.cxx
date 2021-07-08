@@ -1,4 +1,4 @@
-
+#include "log/easylogging++.h"
 #include "ServiceRouter.hpp"
 #include "ServiceCounter.hpp"
 
@@ -47,6 +47,11 @@ void ServiceCounter::Start()
             char* buff = (char*)(zmq_msg_data(&sidentity));
             *buff = 0;
             *(uint32_t*)(buff + 1) = sid;
+            if(sid <= 0) {
+                LOG(WARNING) << "Can not find service - " << (char*)zmq_msg_data(&service) << std::endl;
+            }else{
+                LOG(INFO) << "Find service: conn(" << sid << ") - " << (char*)zmq_msg_data(&service) << std::endl;
+            }
 
             zmq_msg_send(&sidentity, backend_, ZMQ_SNDMORE);
             zmq_msg_send(&identity, backend_, ZMQ_SNDMORE);
@@ -60,7 +65,9 @@ void ServiceCounter::Start()
             zmq_msg_t content;   zmq_msg_init(&content);
 
             zmq_msg_recv(&identity, backend_, 0);
+            LOG(DEBUG) << "RECV IDENTITY";
             zmq_msg_recv(&service, backend_, 0);
+            LOG(DEBUG) << "RECV SERVICE: " << (char*)(zmq_msg_data(&service));
             zmq_getsockopt(backend_, ZMQ_RCVMORE, &more, &more_size);
             if(more != 0) {
                 zmq_msg_recv(&content, backend_, 0);
@@ -70,6 +77,7 @@ void ServiceCounter::Start()
                 zmq_msg_send(&content, frontend_, 0);
             }else{
                 uint32_t id = *(uint32_t*)((char*)zmq_msg_data(&identity) + 1);
+                LOG(INFO) << "register service: conn(" << id << ") - " << (char*)(zmq_msg_data(&service)); 
                 router_->RegisterService(id, (char*)(zmq_msg_data(&service)));
             }
         }

@@ -14,7 +14,7 @@ public:
     ServiceClaim()
     {
         ctx_ = zmq_ctx_new();
-        sock_ = zmq_socket(ctx_, ZMQ_REP);
+        sock_ = zmq_socket(ctx_, ZMQ_REQ);
     }
 
     void Start(char const* srvName)
