@@ -25,12 +25,11 @@ TARGET_LINK_LIBRARIES(broker zmq)
 
 
 ADD_EXECUTABLE(server ./examples/service.cxx
-                      ./src/IService.cxx
                       ./src/log/easylogging++.cc)
 TARGET_LINK_LIBRARIES(server zmq)
 
 
-ADD_EXECUTABLE(test ./examples/test.cxx 
-                    ./src/IService.cxx
-                    ./src/log/easylogging++.cc)
-TARGET_LINK_LIBRARIES(test zmq)
+#ADD_EXECUTABLE(test ./examples/test.cxx 
+#                    ./src/IService.cxx
+#                    ./src/log/easylogging++.cc)
+#TARGET_LINK_LIBRARIES(test zmq)

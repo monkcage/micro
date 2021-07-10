@@ -83,7 +83,7 @@ void ServiceCounter::Start()
                 zmq_msg_t dummy; zmq_msg_init(&dummy);
                 zmq_msg_send(&identity, backend_, ZMQ_SNDMORE);
                 zmq_msg_send(&dummy, backend_, 0);
-                zmq_msg_close(&identity);
+                zmq_msg_close(&dummy);
             }
         }
     }
