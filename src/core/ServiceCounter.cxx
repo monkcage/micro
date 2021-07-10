@@ -7,6 +7,7 @@
 namespace easy {
 
 
+
 ServiceCounter::ServiceCounter()
     : router_(std::make_shared<ServiceRouter>())
 {
@@ -79,6 +80,10 @@ void ServiceCounter::Start()
                 uint32_t id = *(uint32_t*)((char*)zmq_msg_data(&identity) + 1);
                 LOG(INFO) << "register service: conn(" << id << ") - " << (char*)(zmq_msg_data(&service)); 
                 router_->RegisterService(id, (char*)(zmq_msg_data(&service)));
+                zmq_msg_t dummy; zmq_msg_init(&dummy);
+                zmq_msg_send(&identity, backend_, ZMQ_SNDMORE);
+                zmq_msg_send(&dummy, backend_, 0);
+                zmq_msg_close(&identity);
             }
         }
     }

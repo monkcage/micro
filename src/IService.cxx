@@ -136,7 +136,8 @@ void IService::startBackendThread()
 
 void IService::startFrontendThread()
 {
-    // second: poll in/out
+    // poll in/out
+    // proxyDealers接收来自gateway的转发请求,并使用proxyJoint转发到后面的worker
     zmq_pollitem_t* items = new zmq_pollitem_t[proxyDealers_.size() + 1];
     uint32_t i;
     for(i=0; i<proxyDealers_.size(); ++i) {
@@ -160,6 +161,7 @@ void IService::startFrontendThread()
                     zmq_msg_t content;
                     zmq_msg_init(&content);
                     zmq_msg_recv(&content, items[i].socket, 0);
+                    LOG(DEBUG) << "recv from gateway: " << (char*)(zmq_msg_data(&content));
                     // zmq_msg_send(&content, proxyJoint_, 0);
                     zmq_msg_close(&content);
                     zmq_getsockopt(items[i].socket, ZMQ_RCVMORE, &more, &more_size);
@@ -171,6 +173,7 @@ void IService::startFrontendThread()
             // 
         }
     } 
+    delete []items;
 }
 
 void IService::startMonitorThread(uint32_t idx)

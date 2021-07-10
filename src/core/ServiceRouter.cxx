@@ -18,6 +18,7 @@ void ServiceRouter::RegisterService(uint32_t identity, char const* servName)
         group->sid.emplace_back(identity);
     }else{
         std::shared_ptr<ServiceGroup> group = std::make_shared<ServiceGroup>();
+        group->sid.emplace_back(identity);
         router_.emplace(servName, group);
     }
 }

@@ -4,11 +4,14 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.8.0)
 
 PROJECT(micro)
 
+ADD_DEFINITIONS(-std=c++11)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0")
+
 INCLUDE_DIRECTORIES(./th3party/inc ./src/core ./src)
 
 LINK_DIRECTORIES(./th3party/lib)
 
-ADD_DEFINITIONS(-std=c++11)
+
 
 ADD_EXECUTABLE(client ./examples/client.cxx)
 TARGET_LINK_LIBRARIES(client zmq)
