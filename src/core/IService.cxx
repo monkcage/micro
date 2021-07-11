@@ -173,17 +173,25 @@ void IService::startFrontendProxyThread(void* frontend, void* backend)
         }
         if(items[1].revents & ZMQ_POLLIN) {
             zmq_msg_t identity; zmq_msg_init(&identity);
+            zmq_msg_t nullframe; zmq_msg_init(&nullframe);
+            zmq_msg_t client; zmq_msg_init(&client);
             zmq_msg_t content; zmq_msg_init(&content);
             int more = 1;
             size_t more_size = sizeof(more);
             while(more != 0) {
-                zmq_msg_recv(&identity, backend, 0);
+                zmq_msg_recv(&identity, backend, ZMQ_RCVMORE);
+                zmq_msg_recv(&nullframe, backend, ZMQ_RCVMORE);
+                zmq_msg_recv(&client, backend, ZMQ_RCVMORE)
+                // LOG(DEBUG) << "RECV: " << (char*)zmq_msg_data(&identity);
                 zmq_msg_recv(&content, backend, 0);
+                LOG(DEBUG) << "RECV: " << (char*)zmq_msg_data(&content);
                 zmq_msg_send(&identity, frontend, 0);
                 zmq_msg_send(&content, frontend, 0);
                 zmq_getsockopt(&backend, ZMQ_RCVMORE, &more, &more_size);
             }
             zmq_msg_close(&identity);
+            zmq_msg_close(&nullframe);
+            zmq_msg_close(&client)
             zmq_msg_close(&content);
         }
     }

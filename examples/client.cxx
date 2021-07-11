@@ -38,6 +38,7 @@ public:
             zmq_msg_t resp;
             zmq_msg_init(&resp);
             zmq_msg_recv(&resp, sock_, 0);
+            std::cout << "recv : " << (char*)(zmq_msg_data(&resp)) << std::endl;
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
     }

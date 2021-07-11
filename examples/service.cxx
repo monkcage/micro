@@ -27,6 +27,8 @@ public:
 
     virtual void Process(uint32_t id, char const* msg, uint32_t len)
     {
+        char const* data = "Request has been processed.";
+        Send(id, data, strlen(data));
         LOG(DEBUG) << "PROCESS DATA.";
     }
 };
