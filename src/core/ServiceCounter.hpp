@@ -10,15 +10,20 @@ class ServiceRouter;
 class ServiceCounter 
 {
 public:
-    ServiceCounter();
+    ServiceCounter(char const* confile);
 
     void Start();
+
+private:
+    void startProxyThread();
+    void startMonitorThread();
 
 private:
     void* ctx_;
     void* frontend_;
     void* backend_;
     std::shared_ptr<ServiceRouter> router_;
+    char const* confile_;
 };
 
 

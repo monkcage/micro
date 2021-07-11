@@ -6,9 +6,9 @@
 INITIALIZE_EASYLOGGINGPP
 
 
-int main()
+int main(int argc, char const* argv[])
 {
-    easy::ServiceCounter serv;
+    easy::ServiceCounter serv(argv[1]);
     std::thread thr([&](){
         serv.Start();
     });

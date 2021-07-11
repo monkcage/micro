@@ -8,6 +8,7 @@
 
 namespace easy {
 
+
 class ServiceWorker 
 {
 public:
