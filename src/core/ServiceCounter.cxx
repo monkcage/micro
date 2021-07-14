@@ -1,6 +1,10 @@
 
 #include <fstream>
 #include <thread>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include "log/easylogging++.h"
 #include "ServiceRouter.hpp"
 #include "ServiceCounter.hpp"
@@ -16,49 +20,23 @@ using json = nlohmann::json;
 
 namespace detail{
 
-enum conn_status {
-    NotConnected = 0x00,
-    Connecting,
-    Connected,
-    Disconnected
-};
-
-struct service_conf_t {
-    std::string frontend;
-    std::string backend;
-    std::string monitor;
-};
-
-void from_json(json const& j, service_conf_t& conf)
-{
-    j.at("frontend").get_to(conf.frontend);
-    j.at("backend").get_to(conf.backend);
-    j.at("monitor").get_to(conf.monitor);
-}
-
 } // namespace detail
 
 
-struct peer_t {
-    void* zsock;
-    int   id;
-    int   index;
-    int   fd;
-}
-
-
-
-static detail::service_conf_t JCONF;
 
 
 ServiceCounter::ServiceCounter(char const* confile)
     : router_(std::make_shared<ServiceRouter>())
     , confile_(confile)
 {
-    json json_conf;
-    std::ifstream infile(confile);
-    infile >> json_conf;
-    JCONF = json_conf.get<detail::service_conf_t>();
+    // json json_conf;
+    // std::ifstream infile(confile);
+    // infile >> json_conf;
+    // JCONF = json_conf.get<detail::service_conf_t>();
+    pugi::xml_parse_result result = xmldoc_.load_file(confile);
+    pugi::xml_node root = xmldoc_.child("application");
+    xmlconf_ = root.child("gateway");
+
 
     ctx_ = zmq_ctx_new();
     frontend_ = zmq_socket(ctx_, ZMQ_ROUTER);
@@ -86,9 +64,9 @@ void ServiceCounter::Start()
 
 void ServiceCounter::startProxyThread()
 {
-    zmq_bind(frontend_, JCONF.frontend.c_str());
-    zmq_bind(backend_, JCONF.backend.c_str());
-    zmq_socket_monitor(backend_, JCONF.monitor.c_str(), ZMQ_EVENT_ALL);
+    zmq_bind(frontend_, xmlconf_.child("frontend").attribute("value").as_string());
+    zmq_bind(backend_, xmlconf_.child("backend").attribute("value").as_string());
+    zmq_socket_monitor(backend_, xmlconf_.child("monitor").attribute("value").as_string(), ZMQ_EVENT_ALL);
     zmq_pollitem_t items[] = {
         {frontend_, 0, ZMQ_POLLIN, 0},
         {backend_, 0, ZMQ_POLLIN, 0}
@@ -146,9 +124,19 @@ void ServiceCounter::startProxyThread()
                 zmq_msg_send(&nullframe, frontend_, ZMQ_SNDMORE);
                 zmq_msg_send(&content, frontend_, 0);
             }else{ // 服务注册只有两帧数据
-                uint32_t id = *(uint32_t*)((char*)zmq_msg_data(&identity) + 1);
-                LOG(INFO) << "register service: conn(" << id << ") - " << (char*)(zmq_msg_data(&service)); 
-                router_->RegisterService(id, (char*)(zmq_msg_data(&service)));
+                uint32_t id = *(uint32_t*)((char*)zmq_msg_data(&identity) + 1); // zeromq内置id
+                // char const* address = zmq_msg_gets(&identity, "Peer-Address");
+                // char const* test = zmq_msg_gets(&identity, "Socket-Type");
+                // LOG(DEBUG) << " >>>> Address: " << address;
+                // LOG(DEBUG) << " >>>> Socket Type: " << type;
+                int fd = zmq_msg_get(&identity, ZMQ_SRCFD);
+                // sockaddr_in addr;
+                // socklen_t socklen = sizeof(addr);
+                // getpeername(fd, (sockaddr*)&addr, &socklen);
+                // LOG(DEBUG) << " >>>> Address: " << inet_ntoa(addr.sin_addr) << ":" << addr.sin_port;
+
+                LOG(DEBUG) << "register service: conn(" << id << ") - " << (char*)(zmq_msg_data(&service)); 
+                router_->RegisterService(id, fd, (char*)(zmq_msg_data(&service)));
                 zmq_msg_t dummy; zmq_msg_init(&dummy);
                 zmq_msg_send(&identity, backend_, ZMQ_SNDMORE);
                 zmq_msg_send(&dummy, backend_, 0);
@@ -166,7 +154,7 @@ void ServiceCounter::startProxyThread()
 void ServiceCounter::startMonitorThread()
 {
     void* sock = zmq_socket(ctx_, ZMQ_PAIR);
-    zmq_connect(sock, JCONF.monitor.c_str());
+    zmq_connect(sock, xmlconf_.child("monitor").attribute("value").as_string());
 
     zmq_pollitem_t items = {sock, 0, ZMQ_POLLIN, 0};
     while(true) {
@@ -186,6 +174,13 @@ void ServiceCounter::startMonitorThread()
             }
         }
     }
+}
+
+
+void ServiceCounter::startHeartbeat()
+{
+    configCenter_ = zmq_socket(ctx_, ZMQ_PUB);
+    
 }
 
 

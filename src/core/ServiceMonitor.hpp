@@ -22,12 +22,16 @@ public:
     void Start();
 
 private:
+    void processMonitorMessage(char const* data, uint32_t len);
+    void processApiMessage(char const* data, uint32_t len);
+
+private:
     std::shared_ptr<ServiceRouter> router_;
     void* ctx_;
     void* monitor_;
     void* api_;
-    char const* apiUrl_;
-    char const* monitorUrl_;
+    uint8_t const* apiUrl_;
+    uint8_t const* monitorUrl_;
 }
 
 
